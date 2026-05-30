@@ -2,35 +2,29 @@ name: Sync Rulesets to SRS
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 每天北京时间上午 10:00 自动运行
-  workflow_dispatch:     # 允许手动点击按钮运行
+    - cron: '0 2,14 * * *'
+  workflow_dispatch:
 
 jobs:
   run-parser:
     runs-on: ubuntu-latest
     steps:
-    - name: 1. 检出代码
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: 2. 安装 Python 依赖
-      run: pip install requests
+    - run: pip install requests
 
-    - name: 3. 下载 Sing-Box 官方最新编译器
-      run: |
+    - run: |
         LATEST_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
         curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${LATEST_TAG}/sing-box-${LATEST_TAG}-linux-amd64.tar.gz"
         tar -xzf sing-box.tar.gz --strip-components=1 "sing-box-${LATEST_TAG}-linux-amd64/sing-box"
         chmod +x sing-box
 
-    - name: 4. 执行脚本
-      run: python convert.py
+    - run: python convert.py
 
-    - name: 5. 推送纯净的 SRS 文件回项目
-      run: |
+    - run: |
         git config --local user.email "actions@github.com"
         git config --local user.name "GitHub Actions"
         
-        # 强制只将编译出来的 srs 目录塞回仓库
         mkdir -p srs
         git add srs/*.srs 2>/dev/null || true
         
