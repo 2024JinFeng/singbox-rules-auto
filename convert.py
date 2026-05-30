@@ -4,8 +4,11 @@ import subprocess
 import shutil
 import requests
 
+# 严格使用你给的原始链接，不做任何自作聪明的二次修改
 TASKS = {
-    "ChatGPT": ["https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"],
+    "ChatGPT": [
+        "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"
+    ],
     "Other Ai": [
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Copilot/Copilot.list",
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Gemini/Gemini.list",
@@ -65,29 +68,36 @@ SRS_OUTPUT_DIR = "srs"
 def compile_to_srs(json_path, rule_name):
     singbox_bin = "./sing-box" if os.path.exists("./sing-box") else shutil.which("sing-box")
     if not singbox_bin:
+        print(f"⚠️ 未找到 sing-box 编译器")
         return False
     os.makedirs(SRS_OUTPUT_DIR, exist_ok=True)
     srs_path = os.path.join(SRS_OUTPUT_DIR, f"{rule_name}.srs")
     cmd = [singbox_bin, "rule-set", "compile", json_path, "-o", srs_path]
     try:
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        print(f"🟢 编译成功: {srs_path}")
         if os.path.exists(json_path):
             os.remove(json_path)
         return True
-    except Exception:
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 编译失败 {rule_name}: {e.stderr.decode().strip()}")
         return False
 
 def process_convert():
     for rule_name, urls in TASKS.items():
         result = {"version": 1, "rules": [{"domain": [], "domain_suffix": [], "domain_keyword": [], "ip_cidr": [], "ip_asn": []}]}
         rule = result["rules"][0]
+        has_data = False # 新增：标记是否成功下载到数据
+
         for url in urls:
             try:
-                raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/").replace("/raw/", "/")
-                resp = requests.get(raw_url, timeout=15)
+                # 🔴 核心修复：移除对 url 字符串的二次替换，直接使用你的原链接请求
+                resp = requests.get(url, timeout=15)
                 resp.raise_for_status()
                 resp.encoding = 'utf-8'
-                for line in resp.text.splitlines():
+                
+                lines = resp.text.splitlines()
+                for line in lines:
                     line = line.strip()
                     if not line or line.startswith(("#", "payload:")): continue
                     if line.startswith("- "): line = line[2:]
@@ -99,15 +109,23 @@ def process_convert():
                     elif t == "DOMAIN-KEYWORD": rule["domain_keyword"].append(v.lower())
                     elif t in ["IP-CIDR", "IP-CIDR6"]: rule["ip_cidr"].append(v)
                     elif t == "IP-ASN": rule["ip_asn"].append(str(v))
-            except Exception:
+                has_data = True
+            except Exception as e:
+                print(f"⚠️ 链接抓取失败: {url} | 原因: {e}")
                 continue
-        for key in list(rule.keys()):
-            if rule[key]: rule[key] = sorted(list(set(rule[key])))
-            else: del rule[key]
-        temp_json_path = f"temp_{rule_name}.json"
-        with open(temp_json_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
-        compile_to_srs(temp_json_path, rule_name)
+
+        # 只有在成功抓取到数据时才进行转换，避免空规则报错
+        if has_data:
+            for key in list(rule.keys()):
+                if rule[key]: rule[key] = sorted(list(set(rule[key])))
+                else: del rule[key]
+            
+            temp_json_path = f"temp_{rule_name}.json"
+            with open(temp_json_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            compile_to_srs(temp_json_path, rule_name)
+        else:
+            print(f"❌ 分类 {rule_name} 下的所有链接均无法获取有效数据，跳过编译。")
 
 if __name__ == "__main__":
     process_convert()
