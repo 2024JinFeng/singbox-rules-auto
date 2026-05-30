@@ -4,7 +4,6 @@ import subprocess
 import shutil
 import requests
 
-# 严格使用你给的原始链接
 TASKS = {
     "ChatGPT": [
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"
@@ -66,11 +65,7 @@ TASKS = {
 SRS_OUTPUT_DIR = "srs"
 
 def compile_to_srs(json_path, rule_name):
-    singbox_bin = (
-        "./sing-box"
-        if os.path.exists("./sing-box")
-        else shutil.which("sing-box")
-    )
+    singbox_bin = "./sing-box" if os.path.exists("./sing-box") else shutil.which("sing-box")
     if not singbox_bin:
         print("未找到 sing-box")
         return False
@@ -79,13 +74,8 @@ def compile_to_srs(json_path, rule_name):
     srs_path = os.path.join(SRS_OUTPUT_DIR, f"{rule_name}.srs")
     cmd = [singbox_bin, "rule-set", "compile", json_path, "-o", srs_path]
 
-    print("\n===================")
-    print("编译:", rule_name)
-    print("JSON:", json_path)
-
+    print(f"编译: {rule_name}")
     result = subprocess.run(cmd, capture_output=True, text=True)
-    print("stdout:", result.stdout)
-    print("stderr:", result.stderr)
 
     if result.returncode == 0:
         print(f"编译成功: {srs_path}")
@@ -93,12 +83,11 @@ def compile_to_srs(json_path, rule_name):
             os.remove(json_path)
         return True
     else:
-        print(f"编译失败: {rule_name}")
+        print(f"编译失败: {rule_name} | stderr: {result.stderr}")
         return False
 
 def process_convert():
     for rule_name, urls in TASKS.items():
-        # 严格控制初始化结构，绝不携带任何包含 asn/ip_asn 的键值
         result = {
             "version": 1,
             "rules": [
@@ -114,7 +103,7 @@ def process_convert():
 
         for url in urls:
             try:
-                print(f"\n下载: {url}")
+                print(f"下载: {url}")
                 resp = requests.get(url, timeout=30)
                 resp.raise_for_status()
                 resp.encoding = "utf-8"
@@ -133,11 +122,9 @@ def process_convert():
                     rule_type = parts[0].strip().upper()
                     value = parts[1].strip()
 
-                    # 彻底过滤并阻断所有 ASN 规则类型
                     if rule_type in ("IP-ASN", "ASN"):
                         continue
 
-                    # 清洗并切断 Clash 规则中 IP 后缀常带的 ,no-resolve 小尾巴
                     if ",no-resolve" in value.lower():
                         value = value.lower().split(",no-resolve")[0].strip()
 
@@ -153,26 +140,13 @@ def process_convert():
             except Exception as e:
                 print(f"抓取失败: {url} | 错误: {e}")
 
-        # 去重排序
         for key in list(rule.keys()):
             if rule[key]:
                 rule[key] = sorted(set(rule[key]))
             else:
                 del rule[key]
 
-        # 细分数据条数打印（用于核对 Direct 等分类是否条数异常）
-        print(
-            f"📊 {rule_name} 细分统计 -> "
-            f"DOMAIN: {len(rule.get('domain', []))} | "
-            f"SUFFIX: {len(rule.get('domain_suffix', []))} | "
-            f"KEYWORD: {len(rule.get('domain_keyword', []))} | "
-            f"IP_CIDR: {len(rule.get('ip_cidr', []))}"
-        )
-
-        total_rules = 0
-        for v in rule.values():
-            total_rules += len(v)
-
+        total_rules = sum(len(v) for v in rule.values())
         if total_rules == 0:
             print(f"跳过空规则集: {rule_name}")
             continue
@@ -180,11 +154,6 @@ def process_convert():
         temp_json_path = f"temp_{rule_name.replace(' ','_')}.json"
         with open(temp_json_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
-
-        # 现场照妖镜：打印写入的 JSON 前 300 字符，用于自证完全没有 asn 污染
-        print(f"🔍 已生成 {temp_json_path}，实际内容前缀验证:")
-        with open(temp_json_path, "r", encoding="utf-8") as f:
-            print(f.read(300))
 
         compile_to_srs(temp_json_path, rule_name.replace(" ", "_"))
 
