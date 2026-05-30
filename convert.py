@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import requests
 
+# 严格使用你给的原始链接
 TASKS = {
     "ChatGPT": [
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"
@@ -97,7 +98,7 @@ def compile_to_srs(json_path, rule_name):
 
 def process_convert():
     for rule_name, urls in TASKS.items():
-        # 🔴 关键修复 1：将旧的 "ip_asn" 改为最新版规范要求的 "asn"
+        # 严格控制初始化结构，绝不携带任何包含 asn/ip_asn 的键值
         result = {
             "version": 1,
             "rules": [
@@ -105,8 +106,7 @@ def process_convert():
                     "domain": [],
                     "domain_suffix": [],
                     "domain_keyword": [],
-                    "ip_cidr": [],
-                    "asn": []
+                    "ip_cidr": []
                 }
             ]
         }
@@ -133,7 +133,11 @@ def process_convert():
                     rule_type = parts[0].strip().upper()
                     value = parts[1].strip()
 
-                    # 🔴 关键修复 2：如果 IP 分流末尾挂着 ",no-resolve" 标记，将其斩断剔除
+                    # 彻底过滤并阻断所有 ASN 规则类型
+                    if rule_type in ("IP-ASN", "ASN"):
+                        continue
+
+                    # 清洗并切断 Clash 规则中 IP 后缀常带的 ,no-resolve 小尾巴
                     if ",no-resolve" in value.lower():
                         value = value.lower().split(",no-resolve")[0].strip()
 
@@ -145,24 +149,29 @@ def process_convert():
                         rule["domain_keyword"].append(value.lower())
                     elif rule_type in ("IP-CIDR", "IP-CIDR6"):
                         rule["ip_cidr"].append(value)
-                    elif rule_type == "IP-ASN":
-                        # 🔴 关联修改 1：同步存入新的 "asn" 数组中
-                        rule["asn"].append(str(value))
 
             except Exception as e:
                 print(f"抓取失败: {url} | 错误: {e}")
 
+        # 去重排序
         for key in list(rule.keys()):
             if rule[key]:
                 rule[key] = sorted(set(rule[key]))
             else:
                 del rule[key]
 
+        # 细分数据条数打印（用于核对 Direct 等分类是否条数异常）
+        print(
+            f"📊 {rule_name} 细分统计 -> "
+            f"DOMAIN: {len(rule.get('domain', []))} | "
+            f"SUFFIX: {len(rule.get('domain_suffix', []))} | "
+            f"KEYWORD: {len(rule.get('domain_keyword', []))} | "
+            f"IP_CIDR: {len(rule.get('ip_cidr', []))}"
+        )
+
         total_rules = 0
         for v in rule.values():
             total_rules += len(v)
-
-        print(f"{rule_name}: {total_rules} 条规则")
 
         if total_rules == 0:
             print(f"跳过空规则集: {rule_name}")
@@ -171,6 +180,11 @@ def process_convert():
         temp_json_path = f"temp_{rule_name.replace(' ','_')}.json"
         with open(temp_json_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
+
+        # 现场照妖镜：打印写入的 JSON 前 300 字符，用于自证完全没有 asn 污染
+        print(f"🔍 已生成 {temp_json_path}，实际内容前缀验证:")
+        with open(temp_json_path, "r", encoding="utf-8") as f:
+            print(f.read(300))
 
         compile_to_srs(temp_json_path, rule_name.replace(" ", "_"))
 
