@@ -1,9 +1,11 @@
 name: Sync Rulesets to SRS
-
 on:
   schedule:
     - cron: '0 2,14 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run-parser:
@@ -21,11 +23,25 @@ jobs:
 
     - run: python convert.py
 
-    - run: |
-        git config --local user.email "actions@github.com"
-        git config --local user.name "GitHub Actions"
+    - name: Debug and Push
+      run: |
+        echo "===== 1. 添加前状态 ====="
+        git status
         
+        # 将 srs 目录下的变更暂存
         mkdir -p srs
-        git add srs/*.srs 2>/dev/null || true
+        git add srs/*.srs
         
-        git diff --staged --quiet || (git commit -m "Auto Update SRS Rulesets" && git push)
+        echo "===== 2. 添加后状态 ====="
+        git status
+        
+        # 检查是否有暂存的变更
+        if ! git diff --staged --quiet; then
+          echo "检测到规则集有更新，开始推送到仓库..."
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git commit -m "Auto Update SRS Rulesets"
+          git push origin main
+        else
+          echo "===== 结论：上游规则无任何变更，无需 push ====="
+        fi
