@@ -31,7 +31,7 @@ jobs:
         git config --local user.name "GitHub Actions"
         
         # 强制只将编译出来的 srs 目录塞回仓库
-        git mkdir -p srs
+        mkdir -p srs
         git add srs/*.srs 2>/dev/null || true
         
         git diff --staged --quiet || (git commit -m "Auto Update SRS Rulesets" && git push)
