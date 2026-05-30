@@ -40,7 +40,10 @@ TASKS = {
     "Amazon": ["https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Amazon/Amazon.list"],
     "Apple": ["https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Apple/Apple.list"],
     "Microsoft": ["https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Microsoft/Microsoft.list"],
-    "Google": ["https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Google/Google.list"],
+    "Google": [
+        "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Google/Google.list",
+        "https://raw.githubusercontent.com/2024JinFeng/clash/refs/heads/main/google%20play.list"
+    ],
     "TEST": ["https://raw.githubusercontent.com/liandu2024/clash/refs/heads/main/list/Check.list"],
     "Block": [
         "https://raw.githubusercontent.com/liandu2024/clash/refs/heads/main/list/Block.list",
