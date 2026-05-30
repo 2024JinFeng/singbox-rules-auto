@@ -52,7 +52,6 @@ TASKS = {
     "Emby-Proxy": ["https://raw.githubusercontent.com/2024JinFeng/clash/refs/heads/main/Emby-Proxy.list"],
     "Emby-Direct": ["https://raw.githubusercontent.com/2024JinFeng/clash/refs/heads/main/Emby-Direct.list"],
     "Direct": [
-        "https://raw.githubusercontent.com/peiyingyao/Rule-for-OCD/refs/heads/master/rule/Clash/Proxy/Proxy.list",
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/ChinaMax/ChinaMax.list",
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/China/China.list",
         "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/PrivateTracker/PrivateTracker.list"
