@@ -5,6 +5,9 @@ on:
     - cron: '0 2,14 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   run-parser:
     runs-on: ubuntu-latest
@@ -26,6 +29,11 @@ jobs:
         git config --local user.name "GitHub Actions"
         
         mkdir -p srs
-        git add srs/*.srs 2>/dev/null || true
+        git add srs/*.srs
         
-        git diff --staged --quiet || (git commit -m "Auto Update SRS Rulesets" && git push)
+        if ! git diff --staged --quiet; then
+          git commit -m "Auto Update SRS Rulesets"
+          git push origin main
+        else
+          echo "No changes detected, skip push."
+        fi
